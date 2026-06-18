@@ -1,26 +1,30 @@
-from app.db.db import SessionLocal
-from app.db import crud
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-db = SessionLocal()
+from app.api import books, categories
 
-print("\n" + "="*60)
-print("СОДЕРЖИМОЕ БАЗЫ ДАННЫХ")
-print("="*60 + "\n")
+app = FastAPI(
+    title="Bookstore API",
+    description="API для управления книгами и категориями",
+    version="1.0.0"
+)
 
-categories = crud.get_all_categories(db)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-for cat in categories:
-    print(f"📚 Категория: {cat.title}")
-    print("-"*40)
-    
-    books = crud.get_books_by_category(db, cat.id)
-    for book in books:
-        print(f"  📖 {book.title}")
-        print(f"     Описание: {book.description}")
-        print(f"     Цена: {book.price} руб.")
-        print(f"     Ссылка: {book.url or 'пока пустая'}")
-        print()
-    
-print("="*60 + "\n")
+# Подключаем роутеры
+app.include_router(books.router)
+app.include_router(categories.router)
 
-db.close()
+@app.get("/")
+def root():
+    return {"message": "Welcome to Bookstore API", "docs": "/docs", "redoc": "/redoc"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "API is running"}

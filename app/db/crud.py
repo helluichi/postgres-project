@@ -1,23 +1,53 @@
 from sqlalchemy.orm import Session
-from app.db import models
+from app.db.models import Category, Book
 
-# CRUD для Category
-def create_category(db: Session, title: str):
-    category = models.Category(title=title)
+# ========== CRUD для категорий ==========
+def create_category(db: Session, title: str, description: str = None):
+    category = Category(title=title, description=description)
     db.add(category)
     db.commit()
     db.refresh(category)
     return category
 
 def get_all_categories(db: Session):
-    return db.query(models.Category).all()
+    return db.query(Category).all()
 
-def get_books_by_category(db: Session, category_id: int):
-    return db.query(models.Book).filter(models.Book.category_id == category_id).all()
+def get_category_by_id(db: Session, category_id: int):
+    return db.query(Category).filter(Category.id == category_id).first()
 
-# CRUD для Book
-def create_book(db: Session, title: str, description: str, price: float, category_id: int, url: str = ''):
-    book = models.Book(
+def get_category_by_title(db: Session, title: str):
+    return db.query(Category).filter(Category.title == title).first()
+
+def update_category(db: Session, category_id: int, title: str = None, description: str = None):
+    category = get_category_by_id(db, category_id)
+    if category:
+        if title is not None:
+            category.title = title
+        if description is not None:
+            category.description = description
+        db.commit()
+        db.refresh(category)
+    return category
+
+def delete_category(db: Session, category_id: int):
+    category = get_category_by_id(db, category_id)
+    if category:
+        db.delete(category)
+        db.commit()
+        return True
+    return False
+
+# ========== CRUD для книг ==========
+def create_book(db: Session, title: str, description: str, price: float, 
+                url: str = None, category_id: int = None, category_title: str = None):
+    # Если передан category_title, находим категорию или создаём
+    if category_title:
+        category = get_category_by_title(db, category_title)
+        if not category:
+            category = create_category(db, title=category_title)
+        category_id = category.id
+    
+    book = Book(
         title=title,
         description=description,
         price=price,
@@ -30,19 +60,36 @@ def create_book(db: Session, title: str, description: str, price: float, categor
     return book
 
 def get_all_books(db: Session):
-    return db.query(models.Book).all()
+    return db.query(Book).all()
 
-def update_book_price(db: Session, book_id: int, new_price: float):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+def get_book_by_id(db: Session, book_id: int):
+    return db.query(Book).filter(Book.id == book_id).first()
+
+def get_books_by_category_id(db: Session, category_id: int):
+    return db.query(Book).filter(Book.category_id == category_id).all()
+
+def update_book(db: Session, book_id: int, title: str = None, description: str = None,
+                price: float = None, url: str = None, category_id: int = None):
+    book = get_book_by_id(db, book_id)
     if book:
-        book.price = new_price
+        if title is not None:
+            book.title = title
+        if description is not None:
+            book.description = description
+        if price is not None:
+            book.price = price
+        if url is not None:
+            book.url = url
+        if category_id is not None:
+            book.category_id = category_id
         db.commit()
         db.refresh(book)
     return book
 
 def delete_book(db: Session, book_id: int):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if book:
         db.delete(book)
         db.commit()
-    return book
+        return True
+    return False
